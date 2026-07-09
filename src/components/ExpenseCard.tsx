@@ -1,7 +1,7 @@
 import { View, Text } from 'react-native'
-import { ParsedExpense, brl, categoryColor, shortDate } from '@/types'
+import { ParsedExpense, brl, categoryColor, shortDate, paymentLabel } from '@/types'
 
-export default function ExpenseCard({ expense, count }: { expense: ParsedExpense; count: number }) {
+export default function ExpenseCard({ expense }: { expense: ParsedExpense }) {
   const color = categoryColor(expense.category)
   return (
     <View style={{ marginTop: 10, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', padding: 14 }}>
@@ -13,10 +13,8 @@ export default function ExpenseCard({ expense, count }: { expense: ParsedExpense
       </View>
       <Text style={{ color: '#334155', marginTop: 6, fontSize: 14 }}>{expense.description}</Text>
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-        <Chip>{expense.payment_method}</Chip>
-        <Chip>{expense.installments > 1 ? `${expense.installments}x` : 'à vista'}</Chip>
+        <Chip>{paymentLabel(expense.payment_method, expense.installments)}</Chip>
         <Chip>{shortDate(expense.date)}</Chip>
-        {count > 1 ? <Chip>{count} parcelas criadas</Chip> : null}
       </View>
     </View>
   )

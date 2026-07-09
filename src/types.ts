@@ -1,4 +1,3 @@
-// ---- Domínio: gastos ----------------------------------------------------
 
 export type PaymentMethod = 'crédito' | 'débito' | 'pix' | 'dinheiro'
 
@@ -17,7 +16,6 @@ export type Expense = {
   created_at?: string
 }
 
-// Campos extraídos de uma frase antes de virar linha(s) em `expenses`.
 export type ParsedExpense = {
   value: number
   description: string
@@ -27,13 +25,12 @@ export type ParsedExpense = {
   date: string // YYYY-MM-DD
 }
 
-// ---- Domínio: chat ------------------------------------------------------
-
 export type ChartData = { categoria: string; total: number }
 
 export type MessageMeta =
   | { type: 'chart'; title?: string; data: ChartData[]; total?: number }
   | { type: 'expense'; expense: ParsedExpense; count: number }
+  | { type: 'pending'; expense: ParsedExpense } // extraído, aguardando confirmação
   | null
 
 export type ChatMessage = {
@@ -44,8 +41,6 @@ export type ChatMessage = {
   meta?: MessageMeta
   created_at?: string
 }
-
-// ---- Categorias & paleta ------------------------------------------------
 
 export const CATEGORY_COLORS: Record<string, string> = {
   Alimentação: '#f97316',
@@ -64,12 +59,20 @@ export function categoryColor(category: string): string {
   return CATEGORY_COLORS[category] || CATEGORY_COLORS.Outros
 }
 
-// ---- Formatação --------------------------------------------------------
-
 export const brl = (value: number) =>
   `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`
 
 export const shortDate = (iso: string) => {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}`
+}
+
+export const paymentLabel = (method: PaymentMethod, installments: number) => {
+  if (method !== 'crédito') return method
+  return installments > 1 ? `crédito parcelado em ${installments}x` : 'crédito à vista'
+}
+
+export const paymentLabelRow = (method: PaymentMethod, installmentNo: number, installments: number) => {
+  if (method !== 'crédito') return method
+  return installments > 1 ? `crédito parcelado ${installmentNo}/${installments}` : 'crédito à vista'
 }

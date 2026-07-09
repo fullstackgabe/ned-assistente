@@ -1,5 +1,3 @@
-// Sessão local para o modo demo offline (sem Supabase). Mantém um flag
-// persistido e notifica os assinantes (AuthGate), imitando o onAuthStateChange.
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const K = 'demo_session_v1'

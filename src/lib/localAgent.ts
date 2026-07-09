@@ -1,22 +1,6 @@
-// ---------------------------------------------------------------------------
-// Cérebro LOCAL do Ned (fallback).
-//
-// O cérebro "oficial" é a Supabase Edge Function `agent` (OpenAI function
-// calling — ver supabase/functions/agent/index.ts). Este módulo é um
-// interpretador heurístico em PT-BR usado quando a Edge Function não está
-// acessível, para a demo do app funcionar sozinha (registrar, resumir,
-// cancelar). Ele espelha o comportamento das tools do Ned no n8n.
-// ---------------------------------------------------------------------------
 
-import { ParsedExpense, PaymentMethod, brl } from '@/types'
-import {
-  addExpense,
-  cancelLastExpense,
-  monthRange,
-  summarize,
-  todayISO,
-  addMonthsISO,
-} from '@/lib/repo'
+import { ParsedExpense, PaymentMethod, brl, paymentLabel } from '@/types'
+import { todayISO } from '@/lib/repo'
 
 export type AgentReply = { reply: string; meta?: any }
 
@@ -24,13 +8,9 @@ const norm = (s: string) =>
   s
     .toLowerCase()
     .normalize('NFD')
-    // remove acentos (marcas diacríticas combinantes U+0300–U+036F)
     .replace(/[̀-ͯ]/g, '')
 
-// ---- Parsers -----------------------------------------------------------
-
 function parseValue(text: string): number | null {
-  // Captura "R$ 1.200,50", "1200", "50,75", "50.75", "50 reais"
   const m = text.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i)
   if (!m) return null
   let raw = m[1]
@@ -114,104 +94,49 @@ function parseDescription(original: string, t: string, category: string): string
   return d.charAt(0).toUpperCase() + d.slice(1)
 }
 
-// ---- Intenções ---------------------------------------------------------
-
-function isCancel(t: string) {
-  return /(cancela|cancelar|apaga|apagar|remove|remover|excluir|exclui|desfaz|desfazer)/.test(t)
-}
-
-function isRegister(t: string) {
-  return /(gastei|paguei|comprei|gasto|registrar|anota|anotar|adiciona|adicionar)/.test(t)
+function isModify(t: string) {
+  return /(cancela|cancelar|apaga|apagar|remove|remover|excluir|exclui|deleta|deletar|desfaz|desfazer|edita|editar|atualiza|atualizar|altera|alterar|muda|mudar|corrige|corrigir)/.test(t)
 }
 
 function isSummary(t: string) {
   return /(quanto|resumo|resumir|gastos|extrato|categoria|balanco|balanço|relatorio|relatório|total)/.test(t)
 }
 
-function summaryRange(t: string) {
-  const today = todayISO()
-  if (/\bhoje\b/.test(t)) return { from: today, to: today, label: 'hoje' }
-  if (/\bontem\b/.test(t)) {
-    const y = shiftDays(today, -1)
-    return { from: y, to: y, label: 'ontem' }
-  }
-  if (/(7 dias|semana|ultimos dias)/.test(t)) return { from: shiftDays(today, -6), to: today, label: 'os últimos 7 dias' }
-  if (/(mes passado|mês passado|passado)/.test(t)) {
-    const prev = addMonthsISO(today, -1)
-    const r = monthRange(prev)
-    return { ...r, label: 'o mês passado' }
-  }
-  const r = monthRange(today)
-  return { ...r, label: 'este mês' }
-}
+const GO_TO_EXTRATO = 'Pra apagar um gasto, abra a aba Extrato e toque na lixeira do gasto. 📋'
+const SUMMARY_IN_EXTRATO = 'Os resumos e gráficos ficam na aba Extrato — lá você vê os totais por período e categoria. 📊'
 
-// ---- Orquestrador ------------------------------------------------------
+function confirmText(e: ParsedExpense): string {
+  return `Confirmando: ${brl(e.value)} — ${e.description} · ${e.category} · ${paymentLabel(e.payment_method, e.installments)}. Posso registrar? Se algo estiver errado, é só me dizer o que mudar. 👍`
+}
 
 export async function runLocalAgent(message: string): Promise<AgentReply> {
   const t = norm(message)
 
-  // 1) Cancelar
-  if (isCancel(t)) {
-    const removed = await cancelLastExpense()
-    if (!removed) return { reply: 'Não encontrei nenhum gasto recente pra cancelar. 🤔' }
-    return {
-      reply: `Pronto, cancelei o último gasto: ${brl(removed.value)} — ${removed.description} (${removed.category}). 🗑️`,
-    }
-  }
+  if (isModify(t)) return { reply: GO_TO_EXTRATO }
 
   const value = parseValue(t)
 
-  // 2) Registrar gasto — precisa de um valor e de intenção de registrar
-  //    (uma pergunta como "quanto gastei?" cai no resumo, não aqui).
-  if (value != null && (isRegister(t) || !isSummary(t))) {
+  if (value != null) {
     const installments = parseInstallments(t)
+    const category = parseCategory(t)
     const parsed: ParsedExpense = {
       value,
-      description: parseDescription(message, t, parseCategory(t)),
+      description: parseDescription(message, t, category),
       payment_method: parsePayment(t),
-      category: parseCategory(t),
+      category,
       installments,
       date: parseDate(t),
     }
-    const rows = await addExpense(parsed)
-    const parc =
-      installments > 1
-        ? ` em ${installments}x de ${brl(Number((value / installments).toFixed(2)))}`
-        : ''
-    return {
-      reply: `Anotei: ${brl(value)} — ${parsed.description} em ${parsed.category} no ${parsed.payment_method}${parc}. ✅`,
-      meta: { type: 'expense', expense: parsed, count: rows.length },
-    }
+    return { reply: confirmText(parsed), meta: { type: 'pending', expense: parsed } }
   }
 
-  // 3) Resumir
-  if (isSummary(t) || value == null) {
-    const { from, to, label } = summaryRange(t)
-    const s = await summarize(from, to)
-    if (s.count === 0) {
-      return { reply: `Você não teve nenhum gasto em ${label}. 🥳` }
-    }
-    const linhas = s.byCategory
-      .slice(0, 6)
-      .map((c) => `• ${c.categoria}: ${brl(c.total)}`)
-      .join('\n')
-    const reply =
-      `Em ${label} você gastou ${brl(s.total)} em ${s.count} lançamento(s).\n\n${linhas}` +
-      (s.top ? `\n\nMaior categoria: ${s.top.categoria} (${brl(s.top.total)}).` : '')
-    return {
-      reply,
-      meta: { type: 'chart', title: `Gastos — ${label}`, data: s.byCategory, total: s.total },
-    }
-  }
+  if (isSummary(t)) return { reply: SUMMARY_IN_EXTRATO }
 
-  // 4) Ajuda
   return {
     reply:
-      'Oi! Sou o Ned, seu assistente financeiro. 💸\n\nPode falar comigo naturalmente:\n' +
+      'Me conta um gasto que eu registro na hora. Ex.:\n' +
       '• "gastei 50 no mercado no pix"\n' +
-      '• "paguei 1200 num tênis em 3x no crédito"\n' +
-      '• "quanto gastei esse mês?"\n' +
-      '• "gastos por categoria"\n' +
-      '• "cancela o último gasto"',
+      '• "paguei 1200 num tênis em 3x no crédito"\n\n' +
+      'Pra ver, editar ou apagar gastos, use a aba Extrato.',
   }
 }

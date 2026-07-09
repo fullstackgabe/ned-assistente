@@ -1,5 +1,3 @@
-// Store local (AsyncStorage) usado no modo demo offline. Espelha as operações
-// que o app faz no Supabase (gastos + chat), com um seed de demonstração.
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { ChatMessage, Expense, MessageMeta } from '@/types'
 import { DEMO_UID } from '@/lib/config'
@@ -16,7 +14,6 @@ function shiftDays(days: number): string {
 }
 
 type Seed = [string, number, string, Expense['payment_method'], number, number, number]
-// [descrição, valor, categoria, método, parcelas, nº parcela, diasAtrás]
 const SEED: Seed[] = [
   ['Compras do mês', 412.9, 'Mercado', 'crédito', 1, 1, -2],
   ['iFood almoço', 38.5, 'Alimentação', 'pix', 1, 1, -1],
@@ -104,9 +101,29 @@ export const demoStore = {
     return rows.slice().sort((a, b) => ((a.created_at || '') < (b.created_at || '') ? 1 : -1))[0]
   },
 
+  async update(id: string, patch: Partial<Omit<Expense, 'id' | 'created_at'>>): Promise<void> {
+    const rows = await readExpenses()
+    await writeExpenses(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  },
+
   async remove(id: string): Promise<void> {
     const rows = await readExpenses()
     await writeExpenses(rows.filter((r) => r.id !== id))
+  },
+
+  async removeGroup(m: { description: string; installments: number; payment_method: Expense['payment_method']; category: string }): Promise<void> {
+    const rows = await readExpenses()
+    await writeExpenses(
+      rows.filter(
+        (r) =>
+          !(
+            r.description === m.description &&
+            r.installments === m.installments &&
+            r.payment_method === m.payment_method &&
+            r.category === m.category
+          ),
+      ),
+    )
   },
 
   async chatList(): Promise<ChatMessage[]> {
@@ -119,5 +136,9 @@ export const demoStore = {
     const list = await this.chatList()
     list.push({ id: uid(), role, content, meta: meta ?? null, created_at: new Date().toISOString() })
     await AsyncStorage.setItem(K_CHAT, JSON.stringify(list))
+  },
+
+  async chatClear(): Promise<void> {
+    await AsyncStorage.removeItem(K_CHAT)
   },
 }
