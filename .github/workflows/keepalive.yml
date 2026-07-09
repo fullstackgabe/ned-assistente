@@ -1,0 +1,28 @@
+name: Supabase Keep-Alive
+
+# Mantém o projeto Supabase (free tier) ativo, evitando o pause por inatividade.
+# Preencher SUPABASE_URL/SUPABASE_KEY abaixo no deploy (junto com o Gabriel).
+
+on:
+  schedule:
+    - cron: '30 7 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: https://SEU-PROJETO.supabase.co
+          SUPABASE_KEY: sua-anon-key-publica
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "Supabase respondeu HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Ping falhou (esperado 200)"
+            exit 1
+          fi
