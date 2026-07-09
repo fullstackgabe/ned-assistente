@@ -21,7 +21,7 @@ type ChatItem = ChatMessage & { imageUri?: string; cta?: boolean }
 const WELCOME: ChatItem = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Olá, eu sou o Ned 👋\nSeu Assistente Financeiro...\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio/texto, que eu registro pra você rapidinho. ⚡',
+  content: 'Olá, eu sou o Ned 👋\nSeu Assistente Financeiro...\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio ou texto, que eu registro pra você rapidinho. ⚡',
 }
 
 const PRESENTATION =
