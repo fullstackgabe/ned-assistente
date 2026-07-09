@@ -35,9 +35,9 @@ const FAREWELL = 'Te vejo em breve! 😊'
 const SUGGESTIONS = [
   'iFood 45 no crédito',
   'mercado 80 no débito',
-  'tênis 300 em 3x',
+  'tênis 300 no crédito em 3x',
   'lanche 25 no pix',
-  'café 12 em dinheiro',
+  'café 12 no dinheiro',
   'uber 30 no crédito',
 ]
 
