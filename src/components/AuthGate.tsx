@@ -1,6 +1,8 @@
 import { useEffect, useState, ReactNode } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native'
 import { supabase } from '@/lib/supabase'
+import { isDemo } from '@/lib/config'
+import { demoAuth } from '@/lib/demoAuth'
 
 const DEMO_EMAIL = 'demo@demo.com'
 const DEMO_PASS = 'demo1234'
@@ -17,8 +19,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!hasAuth) { setReady(true); return }
     let mounted = true
+    if (isDemo) {
+      demoAuth.getSession().then((on) => { if (mounted) { setSession(on || null); setReady(true) } })
+      const unsub = demoAuth.subscribe((on) => setSession(on || null))
+      return () => { mounted = false; unsub() }
+    }
+    if (!hasAuth) { setReady(true); return }
     supabase.auth.getSession().then(({ data }: any) => {
       if (mounted) { setSession(data?.session || null); setReady(true) }
     })
@@ -28,6 +35,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   const doLogin = async (em: string, pw: string) => {
     setBusy(true); setError(null)
+    if (isDemo) { await demoAuth.signIn(); setBusy(false); return }
     const { error } = await supabase.auth.signInWithPassword({ email: em.trim(), password: pw })
     if (error) setError('Não foi possível entrar. Confira e-mail e senha.')
     setBusy(false)
@@ -35,6 +43,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   const doRegister = async () => {
     setBusy(true); setError(null)
+    if (isDemo) { await demoAuth.signIn(); setBusy(false); return }
     const { error } = await supabase.auth.signUp({ email: email.trim(), password })
     if (error) { setError(error.message); setBusy(false); return }
     await doLogin(email, password)
@@ -59,6 +68,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         <Text style={{ color: '#64748b', marginTop: 4, textAlign: 'center' }}>
           {mode === 'login' ? 'Seu assistente financeiro com IA no chat' : 'Crie sua conta'}
         </Text>
+        {isDemo ? (
+          <View style={{ marginTop: 12, backgroundColor: '#eef2ff', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
+            <Text style={{ color: PRIMARY, fontSize: 12, textAlign: 'center' }}>
+              Modo demonstração local — toque em “Entrar como demo”.
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       <TextInput

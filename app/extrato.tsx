@@ -4,6 +4,8 @@ import { useFocusEffect } from 'expo-router'
 import { Expense, brl, categoryColor, shortDate } from '@/types'
 import { listExpenses, summarize, monthRange, todayISO, addMonthsISO, Summary } from '@/lib/repo'
 import { supabase } from '@/lib/supabase'
+import { isDemo } from '@/lib/config'
+import { demoAuth } from '@/lib/demoAuth'
 import CategoryChart from '@/components/CategoryChart'
 
 const PRIMARY = '#4f46e5'
@@ -54,7 +56,7 @@ export default function ExtratoScreen() {
         <View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a' }}>Seu extrato</Text>
-            <TouchableOpacity onPress={() => supabase.auth.signOut()}>
+            <TouchableOpacity onPress={() => (isDemo ? demoAuth.signOut() : supabase.auth.signOut())}>
               <Text style={{ color: '#94a3b8', fontWeight: '600' }}>Sair</Text>
             </TouchableOpacity>
           </View>

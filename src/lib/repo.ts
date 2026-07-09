@@ -1,5 +1,5 @@
-import { supabase, currentUserId } from '@/lib/supabase'
 import { ChartData, Expense, ParsedExpense } from '@/types'
+import { expensesInsert, expensesList, expensesLast, expensesDelete, userId } from '@/lib/db'
 
 // ---- Datas -------------------------------------------------------------
 
@@ -28,8 +28,7 @@ export function monthRange(ref = todayISO()): { from: string; to: string } {
  * `change_data` do Ned no n8n. Retorna as linhas criadas.
  */
 export async function addExpense(p: ParsedExpense): Promise<Expense[]> {
-  const user_id = await currentUserId()
-  if (!user_id) throw new Error('Sem usuário autenticado.')
+  const user_id = (await userId()) || 'demo-user-local'
 
   const n = Math.max(1, Math.floor(p.installments || 1))
   const per = Number((p.value / n).toFixed(2))
@@ -45,22 +44,14 @@ export async function addExpense(p: ParsedExpense): Promise<Expense[]> {
     date: addMonthsISO(p.date, i),
   }))
 
-  const { data, error } = await supabase.from('expenses').insert(rows).select('*')
-  if (error) throw error
-  return (data as Expense[]) || []
+  return expensesInsert(rows)
 }
 
 /** Cancela (exclui) o gasto mais recente do usuário. */
 export async function cancelLastExpense(): Promise<Expense | null> {
-  const { data } = await supabase
-    .from('expenses')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1)
-  const last = (data as Expense[])?.[0]
+  const last = await expensesLast()
   if (!last) return null
-  const { error } = await supabase.from('expenses').delete().eq('id', last.id)
-  if (error) throw error
+  await expensesDelete(last.id)
   return last
 }
 
@@ -71,12 +62,7 @@ export async function listExpenses(opts: {
   to?: string
   category?: string
 } = {}): Promise<Expense[]> {
-  let q = supabase.from('expenses').select('*').order('date', { ascending: false })
-  if (opts.from) q = q.gte('date', opts.from)
-  if (opts.to) q = q.lte('date', opts.to)
-  if (opts.category) q = q.eq('category', opts.category)
-  const { data } = await q
-  return (data as Expense[]) || []
+  return expensesList(opts)
 }
 
 export type Summary = {
