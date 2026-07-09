@@ -32,6 +32,14 @@ if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getEle
       #root{width:460px;max-width:100%;height:min(860px, calc(100vh - 48px));margin:24px auto;background:#fff;border-radius:36px;overflow:hidden;box-shadow:0 24px 70px rgba(15,23,42,.22)}
     }`
   document.head.appendChild(s)
+
+  document.title = 'Ned'
+  document.querySelectorAll("link[rel*='icon']").forEach((el) => el.remove())
+  const robotSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="88">🤖</text></svg>'
+  const fav = document.createElement('link')
+  fav.rel = 'icon'
+  fav.href = 'data:image/svg+xml,' + encodeURIComponent(robotSvg)
+  document.head.appendChild(fav)
 }
 
 function TabIcon({ emoji, color }: { emoji: string; color: string }) {
