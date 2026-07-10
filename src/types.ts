@@ -63,7 +63,7 @@ export const brl = (value: number) =>
   `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`
 
 export const shortDate = (iso: string) => {
-  const [y, m, d] = iso.split('-')
+  const [, m, d] = iso.split('-')
   return `${d}/${m}`
 }
 
@@ -74,5 +74,5 @@ export const paymentLabel = (method: PaymentMethod, installments: number) => {
 
 export const paymentLabelRow = (method: PaymentMethod, installmentNo: number, installments: number) => {
   if (method !== 'crédito') return method
-  return installments > 1 ? `crédito parcelado ${installmentNo}/${installments}` : 'crédito à vista'
+  return installments > 1 ? `crédito ${installmentNo}/${installments}` : 'crédito à vista'
 }
