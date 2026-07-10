@@ -57,7 +57,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         </View>
         <Text style={{ fontSize: 28, fontWeight: '800', color: '#0f172a' }}>Ned</Text>
         <Text style={{ color: '#64748b', marginTop: 6, textAlign: 'center', fontSize: 15 }}>
-          Seu assistente financeiro com IA no chat
+          Seu assistente financeiro inteligente
         </Text>
       </View>
 
