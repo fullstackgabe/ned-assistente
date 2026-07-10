@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image, Animated, ActivityIndicator,
-  ScrollView, Linking, KeyboardAvoidingView, Platform,
+  Linking, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
@@ -11,7 +11,7 @@ import {
   askNed, loadHistory, saveMessage, registerExpense, clearConversation, isSubscribed, recordVisit, AskInput,
 } from '@/lib/agent'
 import { SUBSCRIBE_URL } from '@/lib/config'
-import { ChatMessage, ParsedExpense, brl, paymentLabel, shortDate, categoryColor } from '@/types'
+import { ChatMessage, MessageMeta, ParsedExpense, brl, paymentLabel, shortDate, categoryColor } from '@/types'
 
 const PRIMARY = '#4f46e5'
 const DANGER = '#dc2626'
@@ -21,7 +21,7 @@ type ChatItem = ChatMessage & { imageUri?: string; cta?: boolean }
 const WELCOME: ChatItem = {
   id: 'welcome',
   role: 'assistant',
-  content: 'Olá, eu sou o Ned 👋\nSeu Assistente Financeiro...\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio ou texto, que eu registro pra você rapidinho. ⚡',
+  content: 'Olá, eu sou o Ned 👋\nSeu Assistente Financeiro Inteligente.\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio ou texto, que eu registro pra você rapidinho. ⚡',
 }
 
 const PRESENTATION =
@@ -33,12 +33,18 @@ const PRESENTATION =
 const FAREWELL = 'Te vejo em breve! 😊'
 
 const SUGGESTIONS = [
-  'iFood 45 no crédito',
-  'mercado 80 no débito',
-  'tênis 300 no crédito em 3x',
-  'lanche 25 no pix',
-  'café 12 no dinheiro',
-  'uber 30 no crédito',
+  'iFood 80 crédito',
+  'mercado 80 débito',
+  'lanche 25 pix',
+  'café 12 dinheiro',
+  'tênis 300 1x',
+  'notebook 1200 crédito 12x',
+]
+
+const SUCCESS_LINES = [
+  'Registrado com sucesso! ✅\nSempre que precisar anotar um gasto, é só me chamar. 😊',
+  'Prontinho, tá salvo! ✅\nTô por aqui sempre que precisar registrar algo. 😊',
+  'Feito! ✅\nPode contar comigo pra anotar seus gastos quando quiser. 👊',
 ]
 
 const uid = () => `${Date.now()}-${Math.round(Math.random() * 1e6)}`
@@ -135,12 +141,14 @@ export default function ChatScreen() {
   const confirmPending = async (id: string, expense: ParsedExpense) => {
     setBusyId(id)
     try {
-      await registerExpense(expense)
+      const count = await registerExpense(expense)
       setMessages((m) => m.filter((x) => x.id !== id)) // tira a mensagem com os botões
-      const parc = expense.installments > 1 ? ` (${expense.installments} parcelas)` : ''
-      const content = `Pronto, registrei! ${brl(expense.value)} — ${expense.description} · ${expense.category} · ${paymentLabel(expense.payment_method, expense.installments)}${parc}. ✅`
-      await revealBot({ id: uid(), role: 'assistant', content, meta: null })
-      saveMessage('assistant', content, null)
+      const meta: MessageMeta = { type: 'expense', expense, count }
+      await revealBot({ id: uid(), role: 'assistant', content: '', meta })
+      saveMessage('assistant', '', meta)
+      const ok = SUCCESS_LINES[Math.floor(Math.random() * SUCCESS_LINES.length)]
+      await revealBot({ id: uid(), role: 'assistant', content: ok })
+      saveMessage('assistant', ok)
     } catch {
       await revealBot({ id: uid(), role: 'assistant', content: 'Não consegui registrar agora. Tenta de novo?' })
     } finally {
@@ -261,6 +269,7 @@ export default function ChatScreen() {
         ref={listRef}
         data={messages}
         keyExtractor={(m) => m.id}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
         renderItem={({ item }) => (
           <Bubble msg={item} busy={busyId === item.id} onConfirm={confirmPending} onCancel={cancelPending} />
@@ -285,7 +294,7 @@ export default function ChatScreen() {
           value={input}
           onChangeText={setInput}
           editable={!recording && !blocked}
-          placeholder={blocked ? 'Assine para conversar com o Ned 🔒' : recording ? 'Gravando… toque em parar' : 'Fale com o Ned…'}
+          placeholder={blocked ? 'Assine para desbloquear 🔒' : recording ? 'Gravando… toque em parar' : 'Fale com o Ned…'}
           placeholderTextColor="#94a3b8"
           multiline
           onSubmitEditing={sendText}
@@ -349,14 +358,6 @@ function RoundBtn({ name, onPress, disabled, danger }: { name: any; onPress: () 
 
 const cleanDesc = (d: string) => (d || '').replace(/\s*\b\d*\s*x\b\s*$/i, '').trim() || (d || '')
 
-function FieldLabel({ children }: { children: string }) {
-  return (
-    <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase', marginTop: 10, marginBottom: 3 }}>
-      {children}
-    </Text>
-  )
-}
-
 function Bubble({ msg, busy, onConfirm, onCancel }: {
   msg: ChatItem
   busy: boolean
@@ -365,13 +366,16 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
 }) {
   const isUser = msg.role === 'user'
   const pending = msg.meta?.type === 'pending'
+  const registered = msg.meta?.type === 'expense'
   const exp = pending ? ((msg.meta as any).expense as ParsedExpense) : null
+  const rexp = registered ? ((msg.meta as any).expense as ParsedExpense) : null
+  const cardExp = exp || rexp
   const time = timeOf(msg)
   return (
     <View style={{ alignItems: isUser ? 'flex-end' : 'flex-start', marginBottom: 7 }}>
       <View
         style={{
-          maxWidth: exp || msg.cta ? '90%' : '82%',
+          maxWidth: cardExp || msg.cta ? '90%' : '82%',
           backgroundColor: isUser ? PRIMARY : '#fff',
           borderWidth: isUser ? 0 : 1,
           borderColor: '#e2e8f0',
@@ -379,7 +383,7 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
           borderBottomRightRadius: isUser ? 4 : 16,
           borderBottomLeftRadius: isUser ? 16 : 4,
           paddingHorizontal: 12,
-          paddingVertical: exp || msg.cta ? 12 : 7,
+          paddingVertical: cardExp || msg.cta ? 12 : 7,
           shadowColor: '#0f172a',
           shadowOpacity: 0.06,
           shadowRadius: 3,
@@ -390,23 +394,27 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
           <Image source={{ uri: msg.imageUri }} style={{ width: 190, height: 190, borderRadius: 12, marginBottom: msg.content ? 6 : 0 }} resizeMode="cover" />
         ) : null}
 
-        {exp ? (
+        {cardExp ? (
           <View>
-            <Text style={{ fontWeight: '700', color: '#0f172a', fontSize: 13.5 }}>Confirma pra mim? 👇</Text>
-            <View style={{ alignSelf: 'flex-start', backgroundColor: categoryColor(exp.category) + '22', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, marginTop: 12 }}>
-              <Text style={{ color: categoryColor(exp.category), fontSize: 12.5, fontWeight: '700' }}>{exp.category}</Text>
+            {exp ? (
+              <Text style={{ fontWeight: '700', color: '#0f172a', fontSize: 13.5, marginBottom: 12 }}>Confirma pra mim? 👇</Text>
+            ) : null}
+            <View style={{ alignSelf: 'flex-start', backgroundColor: categoryColor(cardExp.category) + '22', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 }}>
+              <Text style={{ color: categoryColor(cardExp.category), fontSize: 12.5, fontWeight: '700' }}>{cardExp.category}</Text>
             </View>
-            <Text style={{ fontSize: 23, fontWeight: '900', color: '#0f172a', marginTop: 8 }}>{brl(exp.value)}</Text>
-            <Text style={{ color: '#0f172a', fontSize: 15.5, fontWeight: '600', marginTop: 8 }}>{cleanDesc(exp.description)}</Text>
+            <Text style={{ fontSize: 23, fontWeight: '900', color: '#0f172a', marginTop: 8 }}>{brl(cardExp.value)}</Text>
+            <Text style={{ color: '#0f172a', fontSize: 15.5, fontWeight: '600', marginTop: 8 }}>{cleanDesc(cardExp.description)}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
               <Ionicons name="card-outline" size={15} color="#64748b" />
-              <Text style={{ color: '#475569', fontSize: 14 }}>{paymentLabel(exp.payment_method, exp.installments)}</Text>
+              <Text style={{ color: '#475569', fontSize: 14 }}>{paymentLabel(cardExp.payment_method, cardExp.installments)}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5 }}>
               <Ionicons name="calendar-outline" size={15} color="#64748b" />
-              <Text style={{ color: '#475569', fontSize: 14 }}>{shortDate(exp.date)}</Text>
+              <Text style={{ color: '#475569', fontSize: 14 }}>{shortDate(cardExp.date)}</Text>
             </View>
-            <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 12 }}>Se algo estiver errado, é só me dizer que eu mudo 🙂</Text>
+            {exp ? (
+              <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 12 }}>Se algo estiver errado, é só me dizer que eu mudo 🙂</Text>
+            ) : null}
           </View>
         ) : msg.cta ? (
           <View>
@@ -424,7 +432,7 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
           <Text style={{ color: isUser ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
         )}
 
-        {time && !exp && !msg.cta ? (
+        {time && !cardExp && !msg.cta ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-end', marginTop: 2 }}>
             <Text style={{ fontSize: 10.5, color: isUser ? 'rgba(255,255,255,0.7)' : '#94a3b8' }}>{time}</Text>
             {isUser ? <Ionicons name="checkmark-done" size={13} color="rgba(255,255,255,0.85)" /> : null}
