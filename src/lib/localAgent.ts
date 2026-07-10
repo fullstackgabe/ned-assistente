@@ -11,7 +11,8 @@ const norm = (s: string) =>
     .replace(/[̀-ͯ]/g, '')
 
 function parseValue(text: string): number | null {
-  const m = text.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i)
+  const cleaned = text.replace(/\d+\s*x\b|(?:em|de)\s+\d+\s*(?:vezes|parcelas|x)|\d+\s*parcelas/gi, ' ')
+  const m = cleaned.match(/(?:r\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i)
   if (!m) return null
   let raw = m[1]
   if (raw.includes('.') && raw.includes(',')) raw = raw.replace(/\./g, '').replace(',', '.')
@@ -40,28 +41,6 @@ function parseInstallments(t: string): number {
   return 1
 }
 
-function parseDate(t: string): string {
-  const today = todayISO()
-  if (/anteontem/.test(t)) return shiftDays(today, -2)
-  if (/ontem/.test(t)) return shiftDays(today, -1)
-  const dm = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/)
-  if (dm) {
-    const [, d, m, y] = dm
-    const year = y ? (y.length === 2 ? `20${y}` : y) : today.slice(0, 4)
-    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-  }
-  const dia = t.match(/\bdia\s+(\d{1,2})\b/)
-  if (dia) return `${today.slice(0, 7)}-${dia[1].padStart(2, '0')}`
-  return today
-}
-
-function shiftDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const dt = new Date(Date.UTC(y, m - 1, d))
-  dt.setUTCDate(dt.getUTCDate() + days)
-  return dt.toISOString().slice(0, 10)
-}
-
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   Alimentação: ['ifood', 'pizza', 'restaurante', 'almoco', 'jantar', 'lanche', 'padaria', 'cafe', 'comida', 'hamburguer', 'sushi', 'bar', 'cerveja'],
   Mercado: ['mercado', 'supermercado', 'feira', 'hortifruti', 'compras do mes'],
@@ -81,7 +60,7 @@ function parseCategory(t: string): string {
   return 'Outros'
 }
 
-function parseDescription(original: string, t: string, category: string): string {
+function parseDescription(t: string, category: string): string {
   let d = t
     .replace(/(?:r\$\s*)?\d[\d.,]*\s*(?:reais|reai|conto)?/gi, ' ')
     .replace(/\bpix\b|credito|debito|dinheiro|cartao|cartão|a vista|à vista/gi, ' ')
@@ -121,11 +100,11 @@ export async function runLocalAgent(message: string): Promise<AgentReply> {
     const category = parseCategory(t)
     const parsed: ParsedExpense = {
       value,
-      description: parseDescription(message, t, category),
-      payment_method: parsePayment(t),
+      description: parseDescription(t, category),
+      payment_method: installments > 1 ? 'crédito' : parsePayment(t),
       category,
       installments,
-      date: parseDate(t),
+      date: todayISO(),
     }
     return { reply: confirmText(parsed), meta: { type: 'pending', expense: parsed } }
   }
