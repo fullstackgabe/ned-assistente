@@ -6,7 +6,6 @@ const K_EXP = 'demo_expenses_v1'
 const K_CHAT = 'demo_chat_v1'
 
 const uid = () => `${Date.now()}-${Math.round(Math.random() * 1e9)}`
-const todayISO = () => new Date().toISOString().slice(0, 10)
 function shiftDays(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + days)
@@ -84,7 +83,7 @@ export const demoStore = {
     if (opts.from) rows = rows.filter((r) => r.date >= opts.from!)
     if (opts.to) rows = rows.filter((r) => r.date <= opts.to!)
     if (opts.category) rows = rows.filter((r) => r.category === opts.category)
-    return rows.sort((a, b) => (a.date < b.date ? 1 : -1))
+    return rows.sort((a, b) => ((a.created_at || '') < (b.created_at || '') ? 1 : -1))
   },
 
   async insert(rows: Omit<Expense, 'id' | 'created_at'>[]): Promise<Expense[]> {

@@ -21,7 +21,7 @@ export async function expensesInsert(rows: NewExpense[]): Promise<Expense[]> {
 
 export async function expensesList(opts: { from?: string; to?: string; category?: string } = {}): Promise<Expense[]> {
   if (isDemo) return demoStore.list(opts)
-  let q = supabase.from('expenses').select('*').order('date', { ascending: false })
+  let q = supabase.from('expenses').select('*').order('created_at', { ascending: false })
   if (opts.from) q = q.gte('date', opts.from)
   if (opts.to) q = q.lte('date', opts.to)
   if (opts.category) q = q.eq('category', opts.category)
