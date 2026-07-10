@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Pressable, RefreshControl } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, Pressable, RefreshControl, TextInput } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { Expense, brl, categoryColor, shortDate, paymentLabelRow } from '@/types'
+import { Expense, PaymentMethod, PAYMENT_METHODS, CATEGORY_COLORS, brl, categoryColor, shortDate, paymentLabelRow } from '@/types'
 import {
   listExpenses, summarize, monthRange, weekRange, todayISO, shiftDaysISO, addMonthsISO,
-  deleteExpenseSmart, Summary,
+  deleteExpenseSmart, updateExpense, Summary,
 } from '@/lib/repo'
 import CategoryChart from '@/components/CategoryChart'
 
@@ -34,11 +34,13 @@ function rangeFor(key: PeriodKey): { from: string; to: string } {
 
 export default function ExtratoScreen() {
   const [period, setPeriod] = useState<PeriodKey>('mes')
+  const [open, setOpen] = useState(false)
   const [category, setCategory] = useState<string | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [rows, setRows] = useState<Expense[]>([])
   const [refreshing, setRefreshing] = useState(false)
   const [deleting, setDeleting] = useState<Expense | null>(null)
+  const [editing, setEditing] = useState<Expense | null>(null)
 
   const load = useCallback(async () => {
     const { from, to } = rangeFor(period)
@@ -59,24 +61,51 @@ export default function ExtratoScreen() {
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <FlatList
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        ListHeaderComponentStyle={{ zIndex: 20 }}
+        showsVerticalScrollIndicator={false}
         data={rows}
         keyExtractor={(e) => e.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PRIMARY} />}
         ListHeaderComponent={
           <View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8, marginBottom: 14, marginTop: 4 }}>
-              {PERIODS.map((p) => {
-                const active = p.key === period
-                return (
-                  <TouchableOpacity
-                    key={p.key}
-                    onPress={() => { setPeriod(p.key); setCategory(null) }}
-                    style={{ width: '48.5%', paddingVertical: 10, borderRadius: 999, alignItems: 'center', backgroundColor: active ? PRIMARY : '#eef2ff', borderWidth: 1, borderColor: active ? PRIMARY : '#c7d2fe' }}
-                  >
-                    <Text style={{ color: active ? '#fff' : PRIMARY, fontWeight: '700', fontSize: 13 }}>{p.label}</Text>
-                  </TouchableOpacity>
-                )
-              })}
+            <View style={{ marginBottom: 14, marginTop: 2, position: 'relative', zIndex: 20 }}>
+              <Text style={{ color: '#64748b', fontSize: 12.5, fontWeight: '700', marginBottom: 6 }}>Período</Text>
+              <View style={{ position: 'relative' }}>
+                <TouchableOpacity
+                  onPress={() => setOpen((v) => !v)}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderWidth: 1, borderColor: open ? PRIMARY : '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, zIndex: 2 }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+                    <Text style={{ fontSize: 17 }}>🗓️</Text>
+                    <Text style={{ color: '#0f172a', fontWeight: '700', fontSize: 14 }}>{PERIODS.find((p) => p.key === period)?.label}</Text>
+                  </View>
+                  <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={PRIMARY} />
+                </TouchableOpacity>
+                {open ? (
+                  <>
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setOpen(false)}
+                      style={{ position: 'absolute', top: 48, left: -500, right: -500, height: 1500, zIndex: 1 }}
+                    />
+                    <View style={{ position: 'absolute', top: 52, left: 0, right: 0, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, overflow: 'hidden', zIndex: 3, shadowColor: '#0f172a', shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }}>
+                      {PERIODS.map((p, i) => {
+                        const active = p.key === period
+                        return (
+                          <TouchableOpacity
+                            key={p.key}
+                            onPress={() => { setPeriod(p.key); setCategory(null); setOpen(false) }}
+                            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 11, backgroundColor: active ? '#eef2ff' : '#fff', borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#f1f5f9' }}
+                          >
+                            <Text style={{ color: active ? PRIMARY : '#334155', fontWeight: active ? '700' : '600', fontSize: 14 }}>{p.label}</Text>
+                            {active ? <Ionicons name="checkmark" size={17} color={PRIMARY} /> : null}
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                  </>
+                ) : null}
+              </View>
             </View>
 
             <View style={{ backgroundColor: '#fff', borderRadius: 18, borderWidth: 1, borderColor: '#e2e8f0', padding: 16 }}>
@@ -108,13 +137,17 @@ export default function ExtratoScreen() {
             </View>
           </View>
         }
-        renderItem={({ item }) => <Row e={item} onDelete={() => setDeleting(item)} />}
+        renderItem={({ item }) => <Row e={item} onEdit={() => setEditing(item)} onDelete={() => setDeleting(item)} />}
         ListEmptyComponent={
           <Text style={{ color: '#94a3b8', textAlign: 'center', marginTop: 24 }}>
             Nenhum gasto por aqui ainda.
           </Text>
         }
       />
+
+      {editing ? (
+        <EditSheet expense={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load() }} />
+      ) : null}
 
       {deleting ? (
         <DeleteSheet expense={deleting} onClose={() => setDeleting(null)} onDeleted={afterDelete} />
@@ -133,7 +166,7 @@ function FilterChip({ label, color, active, onPress }: { label: string; color?: 
   )
 }
 
-function Row({ e, onDelete }: { e: Expense; onDelete: () => void }) {
+function Row({ e, onEdit, onDelete }: { e: Expense; onEdit: () => void; onDelete: () => void }) {
   const color = categoryColor(e.category)
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14, padding: 12, marginBottom: 8 }}>
@@ -146,17 +179,31 @@ function Row({ e, onDelete }: { e: Expense; onDelete: () => void }) {
           {e.category} · {paymentLabelRow(e.payment_method, e.installment_no, e.installments)} · {shortDate(e.date)}
         </Text>
       </View>
-      <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 15, marginRight: 8 }}>{brl(e.value)}</Text>
+      <Text style={{ color: '#0f172a', fontWeight: '800', fontSize: 15, marginRight: 6 }}>{brl(e.value)}</Text>
+      {e.installments > 1 ? null : (
+        <Pressable
+          onPress={onEdit}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          style={({ hovered, pressed }: any) => ({
+            width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+            backgroundColor: hovered || pressed ? '#eef2ff' : 'transparent',
+          })}
+        >
+          {({ hovered, pressed }: any) => (
+            <Ionicons name="pencil-outline" size={18} color={hovered || pressed ? PRIMARY : '#a5b4fc'} />
+          )}
+        </Pressable>
+      )}
       <Pressable
         onPress={onDelete}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
         style={({ hovered, pressed }: any) => ({
-          width: 34, height: 34, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+          width: 32, height: 32, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
           backgroundColor: hovered || pressed ? '#fee2e2' : 'transparent',
         })}
       >
         {({ hovered, pressed }: any) => (
-          <Ionicons name="trash-outline" size={20} color={hovered || pressed ? DANGER : '#cbd5e1'} />
+          <Ionicons name="trash-outline" size={19} color={hovered || pressed ? DANGER : '#fca5a5'} />
         )}
       </Pressable>
     </View>
@@ -205,8 +252,8 @@ function DeleteSheet({ expense, onClose, onDeleted }: {
           <Ionicons name={parcelado ? 'warning-outline' : 'alert-circle-outline'} size={20} color={parcelado ? '#b45309' : DANGER} />
           <Text style={{ flex: 1, color: parcelado ? '#7c2d12' : '#7f1d1d', fontSize: 13, lineHeight: 19 }}>
             {parcelado
-              ? `Esse gasto é parcelado em ${expense.installments}x. Excluir vai remover TODAS as ${expense.installments} parcelas dessa compra. Essa ação não tem volta.`
-              : 'Tem certeza que deseja excluir? Essa ação não tem volta.'}
+              ? `Esse gasto é parcelado em ${expense.installments}x.\nExcluir remove TODAS as ${expense.installments} parcelas — as anteriores e as próximas também.\nEssa ação não tem volta.`
+              : 'Tem certeza que deseja excluir?\nEssa ação não tem volta.'}
           </Text>
         </View>
 
@@ -216,6 +263,100 @@ function DeleteSheet({ expense, onClose, onDeleted }: {
           </TouchableOpacity>
           <TouchableOpacity disabled={busy} onPress={remove} style={{ flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: DANGER, opacity: busy ? 0.6 : 1 }}>
             <Text style={{ color: '#fff', fontWeight: '800' }}>{parcelado ? 'Excluir tudo' : 'Excluir'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function EditSheet({ expense, onClose, onSaved }: {
+  expense: Expense
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [desc, setDesc] = useState(expense.description)
+  const [valueStr, setValueStr] = useState(String(expense.value).replace('.', ','))
+  const [category, setCategory] = useState(expense.category)
+  const [method, setMethod] = useState<PaymentMethod>(expense.payment_method)
+  const [busy, setBusy] = useState(false)
+
+  const parcelado = expense.installments > 1
+  const value = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'))
+  const valid = desc.trim().length > 0 && !isNaN(value) && value > 0
+
+  const labelStyle: any = { color: '#64748b', fontSize: 12.5, fontWeight: '700', marginBottom: 6, marginTop: 12 }
+  const inputStyle: any = { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: '#0f172a', backgroundColor: '#f8fafc' }
+
+  const save = async () => {
+    if (!valid || busy) return
+    setBusy(true)
+    try {
+      await updateExpense(expense.id, {
+        description: desc.trim(),
+        value: Number(value.toFixed(2)),
+        category,
+        payment_method: method,
+      })
+      onSaved()
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+      <View style={{ width: '100%', maxWidth: 380, backgroundColor: '#fff', borderRadius: 22, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a' }}>Editar gasto</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="close" size={24} color="#94a3b8" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={labelStyle}>Descrição</Text>
+        <TextInput value={desc} onChangeText={setDesc} placeholder="Ex.: iFood" placeholderTextColor="#cbd5e1" style={inputStyle} />
+
+        <Text style={labelStyle}>Valor (R$)</Text>
+        <TextInput value={valueStr} onChangeText={setValueStr} keyboardType="decimal-pad" placeholder="Ex.: 45,00" placeholderTextColor="#cbd5e1" style={inputStyle} />
+
+        <Text style={labelStyle}>Categoria</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+          {[...Object.keys(CATEGORY_COLORS).filter((c) => c !== 'Outros'), 'Outros'].map((cat) => {
+            const active = cat === category
+            const c = categoryColor(cat)
+            return (
+              <TouchableOpacity key={cat} onPress={() => setCategory(cat)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, backgroundColor: active ? c + '22' : '#f1f5f9', borderWidth: 1, borderColor: active ? c : '#e2e8f0' }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c }} />
+                <Text style={{ color: active ? c : '#475569', fontSize: 12.5, fontWeight: '700' }}>{cat}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <Text style={labelStyle}>Método</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+          {PAYMENT_METHODS.map((m) => {
+            const active = m === method
+            return (
+              <TouchableOpacity key={m} onPress={() => setMethod(m)} style={{ paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, backgroundColor: active ? PRIMARY : '#f1f5f9', borderWidth: 1, borderColor: active ? PRIMARY : '#e2e8f0' }}>
+                <Text style={{ color: active ? '#fff' : '#475569', fontSize: 12.5, fontWeight: '700' }}>{m}</Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {parcelado ? (
+          <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 12, lineHeight: 17 }}>
+            Editando a parcela {expense.installment_no}/{expense.installments} — as outras não mudam.
+          </Text>
+        ) : null}
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+          <TouchableOpacity onPress={onClose} style={{ flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: '#f1f5f9' }}>
+            <Text style={{ color: '#475569', fontWeight: '700' }}>Cancelar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!valid || busy} onPress={save} style={{ flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: PRIMARY, opacity: !valid || busy ? 0.5 : 1 }}>
+            <Text style={{ color: '#fff', fontWeight: '800' }}>Salvar</Text>
           </TouchableOpacity>
         </View>
       </View>
