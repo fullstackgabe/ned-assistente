@@ -142,7 +142,7 @@ export default function ChatScreen() {
     setBusyId(id)
     try {
       const count = await registerExpense(expense)
-      setMessages((m) => m.filter((x) => x.id !== id)) // tira a mensagem com os botões
+      setMessages((m) => m.filter((x) => x.id !== id))
       const meta: MessageMeta = { type: 'expense', expense, count }
       await revealBot({ id: uid(), role: 'assistant', content: '', meta })
       saveMessage('assistant', '', meta)
@@ -233,7 +233,7 @@ export default function ChatScreen() {
   }
 
   const doClear = async () => {
-    try { await clearConversation() } catch { /* ignore */ }
+    try { await clearConversation() } catch {}
     setMessages([WELCOME])
     setShowClear(false)
   }

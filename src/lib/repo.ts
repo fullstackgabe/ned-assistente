@@ -28,7 +28,7 @@ export function monthRange(ref = todayISO()): { from: string; to: string } {
 export function weekRange(ref = todayISO()): { from: string; to: string } {
   const [y, m, d] = ref.split('-').map(Number)
   const dt = new Date(Date.UTC(y, m - 1, d))
-  const diffToMon = (dt.getUTCDay() + 6) % 7 // 0 = segunda ... 6 = domingo
+  const diffToMon = (dt.getUTCDay() + 6) % 7
   const mon = new Date(dt)
   mon.setUTCDate(dt.getUTCDate() - diffToMon)
   const sun = new Date(mon)
@@ -97,7 +97,7 @@ export async function listExpenses(opts: {
 export type Summary = {
   total: number
   count: number
-  byCategory: ChartData[] // ordenado desc por total
+  byCategory: ChartData[]
   top: ChartData | null
   from: string
   to: string

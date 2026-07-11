@@ -12,7 +12,7 @@ export type Expense = {
   payment_method: PaymentMethod
   installments: number
   installment_no: number
-  date: string // YYYY-MM-DD
+  date: string
   created_at?: string
 }
 
@@ -22,7 +22,7 @@ export type ParsedExpense = {
   payment_method: PaymentMethod
   category: string
   installments: number
-  date: string // YYYY-MM-DD
+  date: string
 }
 
 export type ChartData = { categoria: string; total: number }
@@ -30,7 +30,7 @@ export type ChartData = { categoria: string; total: number }
 export type MessageMeta =
   | { type: 'chart'; title?: string; data: ChartData[]; total?: number }
   | { type: 'expense'; expense: ParsedExpense; count: number }
-  | { type: 'pending'; expense: ParsedExpense } // extraído, aguardando confirmação
+  | { type: 'pending'; expense: ParsedExpense }
   | null
 
 export type ChatMessage = {
