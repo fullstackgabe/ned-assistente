@@ -13,3 +13,5 @@ supabase/.temp/
 supabase/
 CLAUDE.md
 NOTES.md
+.vercel
+.env*
