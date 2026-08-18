@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Tabs } from 'expo-router'
-import { Platform, SafeAreaView, Text, TouchableOpacity } from 'react-native'
+import { Keyboard, Platform, SafeAreaView, Text, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import AuthGate from '@/components/AuthGate'
 import { supabase } from '@/lib/supabase'
@@ -47,6 +48,17 @@ function TabIcon({ emoji, color }: { emoji: string; color: string }) {
 }
 
 export default function RootLayout() {
+  const [keyboardVisible, setKeyboardVisible] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true))
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false))
+    return () => { showSub.remove(); hideSub.remove() }
+  }, [])
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <AuthGate>
@@ -58,7 +70,7 @@ export default function RootLayout() {
             headerRight: () => <LogoutButton />,
             tabBarActiveTintColor: PRIMARY,
             tabBarInactiveTintColor: '#94a3b8',
-            tabBarStyle: { borderTopColor: '#e2e8f0' },
+            tabBarStyle: keyboardVisible ? { display: 'none' } : { borderTopColor: '#e2e8f0' },
           }}
         >
           <Tabs.Screen name="index" options={{ href: null }} />

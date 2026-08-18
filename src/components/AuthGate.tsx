@@ -32,10 +32,9 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     try {
       const redirectTo = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : undefined
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
-      if (error) setError('Não foi possível entrar com o Google. Tente de novo.')
+      if (error) { setError('Não foi possível entrar com o Google. Tente de novo.'); setBusy(false) }
     } catch {
       setError('Não foi possível entrar com o Google. Tente de novo.')
-    } finally {
       setBusy(false)
     }
   }

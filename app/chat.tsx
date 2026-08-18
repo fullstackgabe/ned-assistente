@@ -16,7 +16,7 @@ import { ChatMessage, MessageMeta, ParsedExpense, brl, paymentLabel, shortDate, 
 const PRIMARY = '#4f46e5'
 const DANGER = '#dc2626'
 
-type ChatItem = ChatMessage & { imageUri?: string; cta?: boolean }
+type ChatItem = ChatMessage & { imageUri?: string; cta?: boolean; voiceDuration?: number }
 
 const WELCOME: ChatItem = {
   id: 'welcome',
@@ -81,6 +81,7 @@ export default function ChatScreen() {
   const mediaRecorderRef = useRef<any>(null)
   const audioChunksRef = useRef<BlobPart[]>([])
   const nativeRecRef = useRef<Audio.Recording | null>(null)
+  const recStartRef = useRef<number>(0)
 
   useEffect(() => {
     ;(async () => {
@@ -111,9 +112,9 @@ export default function ChatScreen() {
     scrollToEnd()
   }
 
-  const runAsk = async (payload: AskInput, userText: string, imageUri?: string) => {
+  const runAsk = async (payload: AskInput, userText: string, imageUri?: string, voiceDuration?: number) => {
     if (sending || typing) return
-    const userMsg: ChatItem = { id: uid(), role: 'user', content: userText, imageUri }
+    const userMsg: ChatItem = { id: uid(), role: 'user', content: userText, imageUri, voiceDuration }
     setMessages((m) => [...m, userMsg])
     setSending(true)
     setTyping(true)
@@ -191,9 +192,11 @@ export default function ChatScreen() {
         stream.getTracks().forEach((t) => t.stop())
         const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' })
         const b64 = await blobToBase64(blob)
-        runAsk({ audioBase64: b64, audioMime: blob.type }, '🎤 Mensagem de voz')
+        const dur = Math.max(1, Math.round((Date.now() - recStartRef.current) / 1000))
+        runAsk({ audioBase64: b64, audioMime: blob.type }, '🎤 Mensagem de voz', undefined, dur)
       }
       mediaRecorderRef.current = mr
+      recStartRef.current = Date.now()
       mr.start()
       setRecording(true)
     } else {
@@ -202,6 +205,7 @@ export default function ChatScreen() {
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
       const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY)
       nativeRecRef.current = rec
+      recStartRef.current = Date.now()
       setRecording(true)
     }
   }
@@ -219,7 +223,8 @@ export default function ChatScreen() {
       nativeRecRef.current = null
       if (!uriRec) return
       const b64 = await FileSystem.readAsStringAsync(uriRec, { encoding: FileSystem.EncodingType.Base64 })
-      runAsk({ audioBase64: b64, audioMime: 'audio/m4a' }, '🎤 Mensagem de voz')
+      const dur = Math.max(1, Math.round((Date.now() - recStartRef.current) / 1000))
+      runAsk({ audioBase64: b64, audioMime: 'audio/m4a' }, '🎤 Mensagem de voz', undefined, dur)
     }
   }
 
@@ -358,6 +363,34 @@ function RoundBtn({ name, onPress, disabled, danger }: { name: any; onPress: () 
 
 const cleanDesc = (d: string) => (d || '').replace(/\s*\b\d*\s*x\b\s*$/i, '').trim() || (d || '')
 
+const fmtDuration = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+const WAVE_BARS = [6, 11, 5, 15, 9, 17, 6, 13, 19, 8, 5, 15, 10, 6, 17, 9, 4, 12, 8, 16, 6, 10, 4, 8]
+
+function VoiceWave({ isUser, seconds }: { isUser: boolean; seconds: number }) {
+  const barColor = isUser ? 'rgba(255,255,255,0.85)' : PRIMARY
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3, minWidth: 190 }}>
+      <View
+        style={{
+          width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: isUser ? 'rgba(255,255,255,0.18)' : '#eef2ff',
+        }}
+      >
+        <Ionicons name="mic" size={15} color={isUser ? '#fff' : PRIMARY} />
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2.5, height: 20, flex: 1 }}>
+        {WAVE_BARS.map((h, i) => (
+          <View key={i} style={{ width: 2.5, height: h, borderRadius: 2, backgroundColor: barColor }} />
+        ))}
+      </View>
+      <Text style={{ color: isUser ? 'rgba(255,255,255,0.9)' : '#475569', fontSize: 12, fontWeight: '600' }}>
+        {fmtDuration(seconds)}
+      </Text>
+    </View>
+  )
+}
+
 function Bubble({ msg, busy, onConfirm, onCancel }: {
   msg: ChatItem
   busy: boolean
@@ -391,8 +424,10 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
         }}
       >
         {msg.imageUri ? (
-          <Image source={{ uri: msg.imageUri }} style={{ width: 190, height: 190, borderRadius: 12, marginBottom: msg.content ? 6 : 0 }} resizeMode="cover" />
+          <Image source={{ uri: msg.imageUri }} style={{ width: 190, height: 190, borderRadius: 12 }} resizeMode="cover" />
         ) : null}
+
+        {msg.voiceDuration != null ? <VoiceWave isUser={isUser} seconds={msg.voiceDuration} /> : null}
 
         {cardExp ? (
           <View>
@@ -428,7 +463,7 @@ function Bubble({ msg, busy, onConfirm, onCancel }: {
             </TouchableOpacity>
             <Text style={{ color: '#0f172a', fontSize: 15, lineHeight: 22, marginTop: 14 }}>{FAREWELL}</Text>
           </View>
-        ) : (
+        ) : msg.imageUri || msg.voiceDuration != null ? null : (
           <Text style={{ color: isUser ? '#fff' : '#0f172a', fontSize: 15, lineHeight: 21 }}>{msg.content}</Text>
         )}
 
