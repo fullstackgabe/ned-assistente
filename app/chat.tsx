@@ -11,6 +11,7 @@ import {
   askNed, loadHistory, saveMessage, registerExpense, clearConversation, isSubscribed, recordVisit, AskInput,
 } from '@/lib/agent'
 import { SUBSCRIBE_URL } from '@/lib/config'
+import { setChatInputFocused } from '@/lib/chatFocus'
 import { ChatMessage, MessageMeta, ParsedExpense, brl, paymentLabel, shortDate, categoryColor } from '@/types'
 
 const PRIMARY = '#4f46e5'
@@ -243,6 +244,8 @@ export default function ChatScreen() {
     setShowClear(false)
   }
 
+  useEffect(() => () => setChatInputFocused(false), [])
+
   const showSuggestions = messages.length <= 1
 
   if (subscribed === null) {
@@ -303,6 +306,8 @@ export default function ChatScreen() {
           placeholderTextColor="#94a3b8"
           multiline
           onSubmitEditing={sendText}
+          onFocus={() => setChatInputFocused(true)}
+          onBlur={() => setChatInputFocused(false)}
           onContentSizeChange={(e: any) => {
             const h = e?.nativeEvent?.contentSize?.height
             if (h) setInputHeight(Math.min(120, Math.max(38, Math.ceil(h))))
@@ -313,7 +318,7 @@ export default function ChatScreen() {
               sendText()
             }
           }}
-          style={{ flex: 1, height: inputHeight, maxHeight: 120, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 19, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8, fontSize: 15, lineHeight: 20, backgroundColor: '#f8fafc', opacity: blocked ? 0.6 : 1 }}
+          style={{ flex: 1, height: inputHeight, maxHeight: 120, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 19, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 8, fontSize: 16, lineHeight: 20, backgroundColor: '#f8fafc', opacity: blocked ? 0.6 : 1 }}
         />
         <RoundBtn name="image-outline" onPress={pickImage} disabled={sending || recording || typing || blocked} />
         <RoundBtn name={recording ? 'stop' : 'mic-outline'} onPress={toggleRecording} disabled={sending || typing || blocked} danger={recording} />

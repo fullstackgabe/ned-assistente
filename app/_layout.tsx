@@ -6,6 +6,7 @@ import AuthGate from '@/components/AuthGate'
 import { supabase } from '@/lib/supabase'
 import { isDemo } from '@/lib/config'
 import { demoAuth } from '@/lib/demoAuth'
+import { useChatInputFocused } from '@/lib/chatFocus'
 
 const PRIMARY = '#4f46e5'
 
@@ -49,6 +50,7 @@ function TabIcon({ emoji, color }: { emoji: string; color: string }) {
 
 export default function RootLayout() {
   const [keyboardVisible, setKeyboardVisible] = useState(false)
+  const chatInputFocused = useChatInputFocused()
 
   useEffect(() => {
     if (Platform.OS === 'web') return
@@ -58,6 +60,8 @@ export default function RootLayout() {
     const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false))
     return () => { showSub.remove(); hideSub.remove() }
   }, [])
+
+  const hideTabBar = keyboardVisible || chatInputFocused
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
@@ -70,7 +74,7 @@ export default function RootLayout() {
             headerRight: () => <LogoutButton />,
             tabBarActiveTintColor: PRIMARY,
             tabBarInactiveTintColor: '#94a3b8',
-            tabBarStyle: keyboardVisible ? { display: 'none' } : { borderTopColor: '#e2e8f0' },
+            tabBarStyle: hideTabBar ? { display: 'none' } : { borderTopColor: '#e2e8f0' },
           }}
         >
           <Tabs.Screen name="index" options={{ href: null }} />
