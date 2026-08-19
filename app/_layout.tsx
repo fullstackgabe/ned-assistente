@@ -80,7 +80,7 @@ export default function RootLayout() {
           <Tabs.Screen name="index" options={{ href: null }} />
           <Tabs.Screen
             name="chat"
-            options={{ title: 'Ned', tabBarLabel: 'Chat', tabBarIcon: ({ color }) => <TabIcon emoji="💬" color={color} /> }}
+            options={{ title: 'Home', tabBarLabel: 'Chat', tabBarIcon: ({ color }) => <TabIcon emoji="💬" color={color} /> }}
           />
           <Tabs.Screen
             name="extrato"
