@@ -31,6 +31,8 @@ export type MessageMeta =
   | { type: 'chart'; title?: string; data: ChartData[]; total?: number }
   | { type: 'expense'; expense: ParsedExpense; count: number }
   | { type: 'pending'; expense: ParsedExpense }
+  | { type: 'image'; uri: string }
+  | { type: 'voice'; duration: number }
   | null
 
 export type ChatMessage = {

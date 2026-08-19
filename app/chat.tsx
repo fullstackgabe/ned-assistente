@@ -91,7 +91,12 @@ export default function ChatScreen() {
       setSubscribed(sub)
       if (sub) {
         const rows = await loadHistory()
-        setMessages([WELCOME, ...(rows as ChatItem[])])
+        const items: ChatItem[] = rows.map((r) => {
+          if (r.meta?.type === 'image') return { ...r, imageUri: r.meta.uri }
+          if (r.meta?.type === 'voice') return { ...r, voiceDuration: r.meta.duration }
+          return r
+        })
+        setMessages([WELCOME, ...items])
       } else {
         setMessages([{ id: 'paywall', role: 'assistant', content: PRESENTATION, cta: true }])
         recordVisit().catch(() => {})
@@ -115,12 +120,17 @@ export default function ChatScreen() {
 
   const runAsk = async (payload: AskInput, userText: string, imageUri?: string, voiceDuration?: number) => {
     if (sending || typing) return
-    const userMsg: ChatItem = { id: uid(), role: 'user', content: userText, imageUri, voiceDuration }
+    const userMeta: MessageMeta = payload.imageBase64
+      ? { type: 'image', uri: payload.imageBase64 }
+      : voiceDuration != null
+      ? { type: 'voice', duration: voiceDuration }
+      : null
+    const userMsg: ChatItem = { id: uid(), role: 'user', content: userText, imageUri, voiceDuration, meta: userMeta }
     setMessages((m) => [...m, userMsg])
     setSending(true)
     setTyping(true)
     scrollToEnd()
-    saveMessage('user', userText)
+    saveMessage('user', userText, userMeta)
 
     try {
       const { reply, meta } = await askNed(payload)
