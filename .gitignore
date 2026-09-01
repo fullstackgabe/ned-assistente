@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+.env
+*.local
+.vercel
+.DS_Store
+*.log
+*.tsbuildinfo
+.vscode/*
+!.vscode/extensions.json
+.idea
+supabase/.temp
+supabase/subscribers.sql
+CLAUDE.md
+SPEC.md
+NOTES.md

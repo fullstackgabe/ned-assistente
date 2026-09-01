@@ -1,0 +1,29 @@
+name: Supabase Keep-Alive
+
+# Mantém o projeto Supabase (free tier) ativo, evitando o pause por inatividade.
+# A chave abaixo é a publishable (pública, já vai no bundle do app).
+
+on:
+  schedule:
+    - cron: '30 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        env:
+          SUPABASE_URL: https://ridvizejxsaxqtsvcjsi.supabase.co
+          SUPABASE_KEY: sb_publishable_2LCLt_FT8OncSmcDCNBkyA_woaWaaXZ
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            --retry 5 --retry-delay 15 --retry-all-errors \
+            "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+          echo "Supabase respondeu HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Ping falhou (esperado 200)"
+            exit 1
+          fi
