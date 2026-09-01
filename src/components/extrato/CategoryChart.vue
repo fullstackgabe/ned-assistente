@@ -69,7 +69,7 @@ const single = computed(() => (slices.value.length === 1 ? slices.value[0] : nul
       </div>
     </div>
 
-    <div class="flex min-w-[140px] flex-1 flex-col gap-1.5">
+    <div class="flex min-w-[180px] flex-1 flex-col gap-1.5">
       <div v-for="(s, i) in slices" :key="i" class="flex items-center">
         <span class="mr-2 h-2.5 w-2.5 shrink-0 rounded-[3px]" :style="{ background: s.color }"></span>
         <span class="flex-1 truncate text-[13px] text-ink-2">{{ s.d.categoria }}</span>
