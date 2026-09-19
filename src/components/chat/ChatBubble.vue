@@ -60,7 +60,7 @@ function confirm() {
           class="mt-3.5 flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-[15px] font-extrabold text-white"
         >
           <Sparkles :size="17" />
-          Assinar o Ned
+          Quero o Ned
         </a>
         <p class="mt-3.5 text-[15px] leading-[22px] text-ink">{{ FAREWELL }}</p>
       </div>

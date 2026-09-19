@@ -22,9 +22,9 @@ export const WELCOME: ChatItem = {
 
 export const PRESENTATION =
   'Olá, eu sou o Ned 👋\n\n' +
-  'Ainda não sou o seu assistente financeiro... mas adoraria ser! 😄\n\n' +
-  'Registro gastos por foto, áudio e texto.\n\n' +
-  'Pra me ter de vez, basta ativar um plano, é baratinho e super vale a pena! É só tocar no botão abaixo. 👇'
+  'Ainda não sou o seu assistente virtual... mas adoraria ser! 😄\n\n' +
+  'Registro seus gastos rapidinho: é só me informar o valor, a forma de pagamento e com o que foi.\n\n' +
+  'Pra me ter de vez, é só ativar o seu acesso. É baratinho e super vale a pena! 👇'
 
 export const FAREWELL = 'Te vejo em breve! 😊'
 
