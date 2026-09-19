@@ -12,6 +12,7 @@ dist-ssr
 .idea
 supabase/.temp
 supabase/subscribers.sql
-CLAUDE.md
-SPEC.md
 NOTES.md
+.claude/
+.specs/
+.rfcs/
