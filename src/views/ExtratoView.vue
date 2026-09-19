@@ -32,15 +32,15 @@ async function afterDelete() {
 <template>
   <div class="no-scrollbar flex flex-col overflow-y-auto bg-page p-4 pb-8">
     <div class="mb-1.5 mt-0.5 flex items-center justify-between">
-      <p class="text-[12.5px] font-bold text-muted">Período</p>
+      <p class="text-[16px] font-bold text-muted">Período</p>
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-full text-primary-light active:bg-primary-soft active:text-primary"
+        class="flex h-9 w-9 items-center justify-center rounded-full text-muted active:bg-chip"
         aria-label="Atualizar"
         :disabled="store.loading"
         @click="store.load()"
       >
-        <RefreshCw :size="16" :class="store.loading ? 'animate-spin' : ''" />
+        <RefreshCw :size="22" :class="store.loading ? 'animate-spin' : ''" />
       </button>
     </div>
 
@@ -79,7 +79,7 @@ async function afterDelete() {
 
     <ExpenseRow v-for="e in store.rows" :key="e.id" :e="e" @edit="editing = e" @delete="deleting = e" />
 
-    <p v-if="store.loaded && store.rows.length === 0" class="mt-6 text-center text-faint">Nenhum gasto por aqui ainda.</p>
+    <p v-if="store.loaded && store.rows.length === 0" class="mt-6 text-center text-faint">Nenhum gasto para esse período.</p>
 
     <EditSheet v-if="editing" :expense="editing" @close="editing = null" @saved="afterEdit" />
     <DeleteSheet v-if="deleting" :expense="deleting" @close="deleting = null" @deleted="afterDelete" />

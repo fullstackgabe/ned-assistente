@@ -27,7 +27,7 @@ const color = computed(() => categoryColor(props.e.category))
       <button
         v-if="e.installments <= 1"
         type="button"
-        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-primary-light hover:bg-primary-soft hover:text-primary active:bg-primary-soft active:text-primary"
+        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted hover:bg-chip active:bg-chip"
         aria-label="Editar"
         @click="emit('edit')"
       >
