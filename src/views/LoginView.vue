@@ -14,7 +14,7 @@ const auth = useAuthStore()
         <span class="text-4xl leading-none">🤖</span>
       </div>
       <h1 class="text-[28px] font-extrabold text-ink">Ned</h1>
-      <p class="mt-1.5 text-center text-[15px] text-muted">Seu assistente financeiro inteligente</p>
+      <p class="mt-1.5 text-center text-[15px] text-muted">Seu assistente virtual inteligente</p>
     </div>
 
     <button

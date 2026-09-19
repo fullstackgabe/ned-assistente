@@ -17,7 +17,7 @@ export const WELCOME: ChatItem = {
   id: 'welcome',
   role: 'assistant',
   content:
-    'Olá, eu sou o Ned 👋\nSeu Assistente Financeiro Inteligente.\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio ou texto, que eu registro pra você rapidinho. ⚡',
+    'Olá, eu sou o Ned 👋\nSeu Assistente Virtual Inteligente.\nMe envia uma foto do comprovante, ou me explica seu gasto por áudio ou texto, que eu registro pra você rapidinho. ⚡',
 }
 
 export const PRESENTATION =
