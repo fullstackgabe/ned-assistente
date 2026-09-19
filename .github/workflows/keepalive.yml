@@ -1,11 +1,13 @@
 name: Supabase Keep-Alive
 
 # Mantém o projeto Supabase (free tier) ativo, evitando o pause por inatividade.
+# O Supabase pausa por "low activity" (poucas requests/dia na janela de 7 dias),
+# não por zero atividade — por isso o cron roda a cada 4h e faz vários pings por run.
 # A chave abaixo é a publishable (pública, já vai no bundle do app).
 
 on:
   schedule:
-    - cron: '30 7 * * *'
+    - cron: '17 */4 * * *'
   workflow_dispatch:
 
 jobs:
@@ -17,13 +19,20 @@ jobs:
           SUPABASE_URL: https://ridvizejxsaxqtsvcjsi.supabase.co
           SUPABASE_KEY: sb_publishable_2LCLt_FT8OncSmcDCNBkyA_woaWaaXZ
         run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
-            --retry 5 --retry-delay 15 --retry-all-errors \
-            "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY")
-          echo "Supabase respondeu HTTP $code"
-          if [ "$code" != "200" ]; then
-            echo "Ping falhou (esperado 200)"
+          falhas=0
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              --retry 5 --retry-delay 15 --retry-all-errors \
+              "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY")
+            echo "Ping $i/5: Supabase respondeu HTTP $code"
+            if [ "$code" != "200" ]; then
+              falhas=$((falhas + 1))
+            fi
+            sleep 10
+          done
+          if [ "$falhas" -gt 0 ]; then
+            echo "$falhas de 5 pings falharam (esperado 200)"
             exit 1
           fi
