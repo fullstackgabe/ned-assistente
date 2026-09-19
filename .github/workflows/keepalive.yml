@@ -25,7 +25,7 @@ jobs:
               --retry 5 --retry-delay 15 --retry-all-errors \
               "$SUPABASE_URL/rest/v1/expenses?select=id&limit=1" \
               -H "apikey: $SUPABASE_KEY" \
-              -H "Authorization: Bearer $SUPABASE_KEY")
+              -H "Authorization: Bearer $SUPABASE_KEY" || echo "000")
             echo "Ping $i/5: Supabase respondeu HTTP $code"
             if [ "$code" != "200" ]; then
               falhas=$((falhas + 1))
