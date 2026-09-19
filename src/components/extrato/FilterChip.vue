@@ -5,7 +5,7 @@ import { alpha } from '@/lib/format'
 const props = defineProps<{ label: string; color?: string; active: boolean }>()
 const emit = defineEmits<{ select: [] }>()
 
-const c = computed(() => props.color ?? '#4f46e5')
+const c = computed(() => props.color ?? '#15803d')
 const style = computed(() => (props.active ? { color: c.value, borderColor: c.value, background: alpha(c.value) } : {}))
 </script>
 

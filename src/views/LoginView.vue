@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DollarSign } from '@lucide/vue'
 import { useAuthStore } from '@/stores/auth'
 import { isDemo } from '@/lib/config'
 import Spinner from '@/components/Spinner.vue'
@@ -10,8 +11,8 @@ const auth = useAuthStore()
 <template>
   <div class="flex flex-1 flex-col justify-center overflow-y-auto bg-white p-6">
     <div class="mb-7 flex flex-col items-center">
-      <div class="mb-3.5 flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-robot">
-        <span class="text-4xl leading-none">🤖</span>
+      <div class="mb-3.5 flex h-[72px] w-[72px] items-center justify-center rounded-[22px] bg-logo">
+        <DollarSign :size="36" :stroke-width="2.6" class="text-primary" />
       </div>
       <h1 class="text-[28px] font-extrabold text-ink">Ned</h1>
       <p class="mt-1.5 text-center text-[15px] text-muted">Seu assistente virtual inteligente</p>
@@ -29,7 +30,7 @@ const auth = useAuthStore()
       v-else
       type="button"
       :disabled="auth.busy"
-      class="flex items-center justify-center gap-2.5 rounded-[14px] bg-primary py-[15px] text-[15px] font-bold text-white shadow-[0_4px_8px_rgba(79,70,229,0.25)]"
+      class="flex items-center justify-center gap-2.5 rounded-[14px] bg-primary py-[15px] text-[15px] font-bold text-white shadow-[0_4px_8px_rgba(21,128,61,0.25)]"
       :class="auth.busy ? 'opacity-70' : ''"
       @click="auth.signInGoogle()"
     >
