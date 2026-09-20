@@ -6,26 +6,35 @@ import { setChatInputFocused } from '@/composables/useInputFocus'
 import { useRecorder } from '@/composables/useRecorder'
 import { useImagePicker } from '@/composables/useImagePicker'
 import RoundButton from './RoundButton.vue'
+import Spinner from '@/components/Spinner.vue'
 
 const chat = useChatStore()
 const textarea = ref<HTMLTextAreaElement | null>(null)
+const sendingAudio = ref(false)
 
 const recorder = useRecorder((base64, mime, seconds) =>
   chat.runAsk({ audioBase64: base64, audioMime: mime }, '🎤 Mensagem de voz', undefined, seconds),
 )
+const { seconds } = recorder
 watch(recorder.recording, (v) => {
   chat.recording = v
 })
+watch(
+  () => chat.busy,
+  (v) => {
+    if (!v) sendingAudio.value = false
+  },
+)
 
 const picker = useImagePicker(
   (dataUrl) => chat.runAsk({ imageBase64: dataUrl }, '🧾 Enviei um comprovante', dataUrl),
   () => chat.botNote('Não consegui abrir a imagem. Tenta de novo?'),
 )
 
-const placeholder = computed(() =>
-  chat.blocked ? 'Assine para desbloquear 🔒' : chat.recording ? 'Gravando… toque em parar' : 'Fale com o Ned…',
-)
-const canSend = computed(() => !!chat.draft.trim() && !chat.busy && !chat.recording && !chat.blocked)
+const audioMode = computed(() => chat.recording || sendingAudio.value)
+const timer = computed(() => `${Math.floor(seconds.value / 60)}:${String(seconds.value % 60).padStart(2, '0')}`)
+const placeholder = computed(() => (chat.blocked ? 'Assine para desbloquear 🔒' : 'Digite aqui…'))
+const canSend = computed(() => !!chat.draft.trim() && !chat.busy && !audioMode.value && !chat.blocked)
 
 function resize() {
   const el = textarea.value
@@ -47,17 +56,21 @@ function onKeydown(e: KeyboardEvent) {
 }
 
 async function toggleMic() {
-  if (chat.busy || chat.blocked) return
+  if (chat.busy || chat.blocked || sendingAudio.value) return
+  if (chat.recording) {
+    sendingAudio.value = true
+    recorder.stop()
+    return
+  }
   try {
-    await recorder.toggle()
+    await recorder.start()
   } catch {
-    chat.recording = false
-    chat.botNote('Não consegui acessar o microfone. Verifique a permissão e tente de novo.')
+    return
   }
 }
 
 function pickImage() {
-  if (chat.busy || chat.recording || chat.blocked) return
+  if (chat.busy || audioMode.value || chat.blocked) return
   picker.open()
 }
 
@@ -72,11 +85,20 @@ onBeforeUnmount(() => setChatInputFocused(false))
 
 <template>
   <div class="flex items-end gap-1.5 border-t border-line bg-white px-2.5 py-2">
+    <div
+      v-if="audioMode"
+      class="flex h-[38px] flex-1 items-center gap-2.5 rounded-[19px] border border-line bg-page px-3.5"
+    >
+      <span class="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" :class="chat.recording ? 'animate-pulse' : ''"></span>
+      <span class="text-base tabular-nums text-ink">{{ timer }}</span>
+      <span class="text-sm text-faint">{{ chat.recording ? 'Gravando…' : 'Enviando…' }}</span>
+    </div>
     <textarea
+      v-else
       ref="textarea"
       v-model="chat.draft"
       rows="1"
-      :readonly="chat.recording || chat.blocked"
+      :readonly="chat.blocked"
       :placeholder="placeholder"
       class="min-h-[38px] max-h-[120px] flex-1 resize-none rounded-[19px] border border-line bg-page px-3.5 py-2 text-base leading-5 text-ink placeholder:text-faint"
       :class="chat.blocked ? 'opacity-60' : ''"
@@ -85,19 +107,24 @@ onBeforeUnmount(() => setChatInputFocused(false))
       @blur="setChatInputFocused(false)"
       @input="resize"
     ></textarea>
-    <RoundButton :disabled="chat.busy || chat.recording || chat.blocked" aria-label="Enviar imagem" @click="pickImage">
+    <RoundButton v-if="!audioMode" :disabled="chat.busy || chat.blocked" aria-label="Enviar imagem" @click="pickImage">
       <ImageIcon :size="19" />
     </RoundButton>
+    <div v-if="sendingAudio" class="flex h-[38px] w-[38px] shrink-0 items-center justify-center">
+      <Spinner :size="20" />
+    </div>
     <RoundButton
+      v-else
       :disabled="chat.busy || chat.blocked"
       :danger="chat.recording"
-      :aria-label="chat.recording ? 'Parar gravação' : 'Gravar áudio'"
+      :aria-label="chat.recording ? 'Parar e enviar' : 'Gravar áudio'"
       @click="toggleMic"
     >
       <Square v-if="chat.recording" :size="17" fill="currentColor" />
       <Mic v-else :size="19" />
     </RoundButton>
     <button
+      v-if="!audioMode"
       type="button"
       :disabled="!canSend"
       class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full text-white"

@@ -19,10 +19,17 @@ function pickMime(): string {
 
 export function useRecorder(onDone: (base64: string, mime: string, seconds: number) => void) {
   const recording = ref(false)
+  const seconds = ref(0)
   let recorder: MediaRecorder | null = null
   let stream: MediaStream | null = null
   let chunks: BlobPart[] = []
-  let startedAt = 0
+  let timer: number | undefined
+
+  function stopTimer() {
+    if (timer === undefined) return
+    clearInterval(timer)
+    timer = undefined
+  }
 
   async function start() {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -37,16 +44,19 @@ export function useRecorder(onDone: (base64: string, mime: string, seconds: numb
       const type = recorder?.mimeType || mime || 'audio/webm'
       const blob = new Blob(chunks, { type })
       const b64 = await blobToBase64(blob)
-      const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
-      onDone(b64, blob.type || type, seconds)
+      onDone(b64, blob.type || type, Math.max(1, seconds.value))
     }
-    startedAt = Date.now()
+    seconds.value = 0
     recorder.start()
     recording.value = true
+    timer = window.setInterval(() => {
+      seconds.value += 1
+    }, 1000)
   }
 
   function stop() {
     recording.value = false
+    stopTimer()
     if (recorder && recorder.state !== 'inactive') recorder.stop()
   }
 
@@ -55,5 +65,5 @@ export function useRecorder(onDone: (base64: string, mime: string, seconds: numb
     else await start()
   }
 
-  return { recording, start, stop, toggle }
+  return { recording, seconds, start, stop, toggle }
 }
