@@ -77,7 +77,7 @@ function isSummary(t: string) {
   return /(quanto|resumo|resumir|gastos|extrato|categoria|balanco|balanço|relatorio|relatório|total)/.test(t)
 }
 
-const GO_TO_EXTRATO = 'Pra apagar um gasto, abra a aba Extrato e toque na lixeira do gasto. 📋'
+const GO_TO_EXTRATO = 'Pra editar ou apagar um gasto, abra a aba Extrato e toque no lápis ou na lixeira. 📋'
 const SUMMARY_IN_EXTRATO = 'Os resumos e gráficos ficam na aba Extrato — lá você vê os totais por período e categoria. 📊'
 
 function confirmText(e: ParsedExpense): string {
